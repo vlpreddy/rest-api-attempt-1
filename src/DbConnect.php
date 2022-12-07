@@ -1,6 +1,4 @@
-
 <?php
-
 class DbConnect {
     private $server = 'db';
     private $dbname = 'restapi';
@@ -18,9 +16,4 @@ class DbConnect {
         }
     }
 }
-
-$db = new DbConnect;
-$db->connect();
-
-
 ?>

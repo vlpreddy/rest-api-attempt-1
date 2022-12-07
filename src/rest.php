@@ -4,13 +4,21 @@ class Rest{
     protected $request;
     protected $serviceName;
     protected $param;
+    protected $userId;
     public function __construct(){
         if($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->throwError(REQUEST_METHOD_NOT_VALID, 'Request Method is not valid');echo "Method is not post.";
         }
+
         $handler = fopen('php://input','r');
         $this->request = stream_get_contents($handler);
         $this->validateRequest();
+
+        $db = new DbConnect();
+        $this->dbConn = $db->connect();
+        if('generatetoken' != strtolower($this->serviceName)){
+            $this->validateToken();
+        }
     } 
 
     public function validateRequest(){
@@ -35,11 +43,41 @@ class Rest{
     }
 
     public  function processApi(){
-
+        $api = new Api;
+        $rMethod = new reflectionMethod('Api', $this->serviceName);
+        if(!method_exists($api, $this->serviceName)){
+            $this->throwError(API_DOES_NOT_EXIST, "API Does not exist");
+        }
+        $rMethod->invoke($api);
     }
 
-    public function validateParameter($fieldName, $value, $datatype, $required ){
+    public function validateParameter($fieldName, $value, $datatype, $required=true ){
+        if($required == true && empty($value) == true){
+            $this->throwError(VALIDATE_PARAMETER_REQUIRED, $fieldName . " Parameter is required");
+        }
 
+        switch ($datatype) {
+            case BOOLEAN:
+                if(!is_bool($value)){
+                    $this->throwError(VALIDATE_PARAMETER_DATATYPE, " Datatype is not valid for " .$fieldName . ". It should be boolean");
+                }
+                break;
+            case INTEGER:
+                if(!is_numeric($value)){
+                    $this->throwError(VALIDATE_PARAMETER_DATATYPE, " Datatype is not valid for " .$fieldName. ". It should be numeric");
+                }
+                break;
+                case STRING:
+                    if(!is_string($value)){
+                        $this->throwError(VALIDATE_PARAMETER_DATATYPE, " Datatype is not valid for " .$fieldName. ". It should be string");
+                    }
+                    break;
+            default:
+                # code...
+                break;
+        }
+
+        return $value;
     }
 
     public function throwError($code, $message){
@@ -48,9 +86,66 @@ class Rest{
         echo $errorMsg; exit;
     }
 
-    public function returnResponse(){
+    public function returnResponse($code, $responseString){
+        $response = json_encode(['response' => ['status' => $code, "result"=>$responseString]]);
+        header("content-type: application/json");
+        echo $response; exit;
 
     }
+
+    	/**
+	    * Get hearder Authorization
+	    * */
+	    public function getAuthorizationHeader(){
+	        $headers = null;
+	        if (isset($_SERVER['Authorization'])) {
+	            $headers = trim($_SERVER["Authorization"]);
+	        }
+	        else if (isset($_SERVER['HTTP_AUTHORIZATION'])) { //Nginx or fast CGI
+	            $headers = trim($_SERVER["HTTP_AUTHORIZATION"]);
+	        } elseif (function_exists('apache_request_headers')) {
+	            $requestHeaders = apache_request_headers();
+	            // Server-side fix for bug in old Android versions (a nice side-effect of this fix means we don't care about capitalization for Authorization)
+	            $requestHeaders = array_combine(array_map('ucwords', array_keys($requestHeaders)), array_values($requestHeaders));
+	            if (isset($requestHeaders['Authorization'])) {
+	                $headers = trim($requestHeaders['Authorization']);
+	            }
+	        }
+	        return $headers;
+	    }
+	    /**
+	     * get access token from header
+	     * */
+	    public function getBearerToken() {
+	        $headers = $this->getAuthorizationHeader();
+	        // HEADER: Get the access token from the header
+	        if (!empty($headers)) {
+	            if (preg_match('/Bearer\s(\S+)/', $headers, $matches)) {
+	                return $matches[1];
+	            }
+	        }
+	        $this->throwError( ATHORIZATION_HEADER_NOT_FOUND, 'Access Token Not found');
+	    }
+
+        public function validateToken(){
+            try {   
+                $token = $this->getBearerToken();
+                $payload = JWT::decode($token, SECRETE_KEY, ['HS256']);
+                $stmt = $this->dbConn->prepare("SELECT * FROM users WHERE id =:userid");
+                $stmt->bindParam(":userid", $payload->userid);
+                $stmt->execute();
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if(!is_array($user)){
+                    $this->returnResponse(INVALID_USER_PASS, "This user is not found in our database");
+                }
+                if($user['active'] == 0){
+                    $this->returnResponse(USER_NOT_ACTIVE, "This user may be deactivated, please contact administrator");
+                }
+                $this->userId = $payload->userid;
+            }catch(Exception $e) {
+                    $this->throwError(ACCESS_TOKEN_ERRORS, $e->getMessage());
+                }
+        }
 }
 
 
