@@ -1,1 +1,14 @@
 https://www.youtube.com/watch?v=ThpnqYpvnIM
+https://www.sitepoint.com/docker-php-development-environment/#tldr
+https://jwt.io/introduction
+https://www.ics.uci.edu/~fielding/pubs/dissertation/rest_arch_style.html
+
+{
+    "name": "generateToken",
+    "param": {
+        "email": "engage@vlpreddy.com",
+        "pass":"pass123"
+    }
+}
+
+https://www.youtube.com/@TruthSeekersio/playlists
