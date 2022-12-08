@@ -43,13 +43,13 @@ class Api extends Rest{
         $name = $this->validateParameter('name',$this->param['name'], STRING, false);
         $email = $this->validateParameter('email',$this->param['email'], STRING, false);
         $addr = $this->validateParameter('addr',$this->param['addr'], STRING, false);
-        $mobile = $this->validateParameter('mobile',$this->param['mobile'], STRING, false);
+        $mobile = $this->validateParameter('mobile',$this->param['mobile'], INTEGER, false);
             $cust = new Customer();
             $cust->setName($name);
             $cust->setEmail($email);
             $cust->setAddress($addr);
             $cust->setMobile($mobile);
-            $cust->setCreatedBy($payLoad->userid);
+            $cust->setCreatedBy($this->userId);
             $cust->setCreatedOn(date('Y-m-d'));
             if(!$cust->insert()){
                 $message = "Failed to Insert";
@@ -80,6 +80,46 @@ class Api extends Rest{
         $this->returnResponse(SUCCESS_RESPONSE, $response);
 
     }
+
+
+    public function updateCustomer(){
+        //print_r($this->param,true); exit;
+        $customerId = $this->validateParameter('customerId',$this->param['customerId'], INTEGER);
+        $name = $this->validateParameter('name',$this->param['name'], STRING, false);
+        $addr = $this->validateParameter('addr',$this->param['addr'], STRING, false);
+        $mobile = $this->validateParameter('mobile',$this->param['mobile'], INTEGER, false);
+            $cust = new Customer();
+            $cust->setId($customerId);
+            $cust->setName($name);
+            $cust->setAddress($addr);
+            $cust->setMobile($mobile);
+            $cust->setupdatedBy($this->userId);
+            $cust->setUpdatedOn(date('Y-m-d'));
+            if(!$cust->update()){
+                $message = "Failed to Update";
+            } else {
+                $message = "Updated Succesfully";
+            }
+
+            $this->returnResponse(SUCCESS_RESPONSE, $message);
+            
+    }
+
+    public function deleteCustomer(){
+        $customerId = $this->validateParameter('customerId', $this->param['customerId'], INTEGER);
+        $cust  = new Customer();
+        $cust->setId($customerId);
+        
+        if(!$cust->delete()){
+            $message = "Failed to Delete";
+        } else {
+                $message = "Deleted Succesfully";
+        }
+
+        $this->returnResponse(SUCCESS_RESPONSE, $message);
+
+    }
+        
 }
 
 ?>
